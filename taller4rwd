@@ -1,0 +1,222 @@
+---
+title: 'Prueba SABER 2019: Análisis de resultados'
+author: "Leonardo Enciso"
+date: "9/4/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r include=FALSE}
+
+## Lectura de los datos 
+setwd("C:/Users/leonardo/Dropbox/MAESTRIA PROVISIONAL/COMPUTACION ESTADISTICA/Trabajo4")
+library(data.table)
+library(DT)
+load("trabajo4.RData")
+tabla<-trabajo4
+fwrite(trabajo4, "trabajo4_t.csv")
+trabajo4<-fread("trabajo4_t.csv", encoding= "unknown")
+```
+
+# Introducción 
+
+Los resultados de las pruebas SABER son una fuente de información muy valiosa para conocer el desempeño educativo a nivel nacional y su relación con variables sociales y económicas. La versión mas reciente de la prueba de la que se tiene información de buena calidad, corresponde a la versión del año 2019. ^[La prueba fue presentada el 14 de Octubre de 2019.]. Con base en esta información se ha preparado este informe que resume aspectos relevantes respecto a la población de estudiantes y los resultados de la prueba. Nuestro objetivo es proveer al lector de un resumen preciso y ameno, que facilite la interpretación de la información. Este documento fue construido en R Studio el cual es un ambiente de desarrollo integrado (IDE) que utiliza como base el lenguaje estadístico R. Para mayor información respecto a este programa, diríjase al sitio web de [RStudio](https://www.rstudio.com)
+
+# Características de la población 
+
+## Distribución por sexos
+
+Este análisis fue realizado el `r Sys.Date()`. Para el año 2019, el número de estudiantes que presentó la prueba fue de `r nrow(trabajo4)` de los cuales el  `r round(length(which(trabajo4$ESTU_GENERO=="F"))/nrow(trabajo4)*100,2)`%  fueron mujeres correspondiente a `r length(which(trabajo4$ESTU_GENERO=="F"))` estudiantes. 
+
+## Edad de los participantes 
+
+```{r Calcula_edad, include=FALSE}
+library(lubridate)
+fecha_nacio<-dmy(trabajo4$ESTU_FECHANACIMIENTO)
+fecha_presenta<-make_date(year=2019, month = 10, day = 14)
+diferencia<-difftime(fecha_presenta, fecha_nacio)
+trabajo4$edad<-diferencia
+trabajo4$edad.an<-as.numeric(trabajo4$edad/365.25)
+```
+El análisis de la edad muestra que existen inconsistencias en algunos de los registros. El rango de edad en años observado fue de ( `r round(range(trabajo4$edad.an),2)` ). La mediana de edad para toda la población fue de `r round(median(trabajo4$edad.an),2)` años, con un rango intercuartílico de `r round(IQR(trabajo4$edad.an),2)`. Para eliminar los valores extremos que no correspondían a edades reales, se realizó el cálculo de la media recortada en 5 % la cual mostró que el promedio de edad de la población era de `r round(mean(trabajo4$edad.an, trim = 0.05),2)`
+
+## Características de los estudiantes
+
+La información disponible se encontraba discriminada entre información de los _estudiantes_, las _familias_, las _instituciones educativas_ y los resultados de las _pruebas_. El análisis se presenta siguiendo este mismo orden. La tabla 1 a continuación resume algunas de las características de los estudiantes participantes. 
+```{r factores_tabla1, include=FALSE}
+
+# Factores 
+trabajo4$ESTU_GENERO<-as.factor(trabajo4$ESTU_GENERO)
+trabajo4$ESTU_ESTADOCIVIL<-as.factor(trabajo4$ESTU_ESTADOCIVIL)
+trabajo4$ESTU_TIENEETNIA<-as.factor(trabajo4$ESTU_TIENEETNIA)
+trabajo4$ESTU_ETNIA<-as.factor(trabajo4$ESTU_ETNIA)
+trabajo4$ESTU_DEPTO_RESIDE<-as.factor(trabajo4$ESTU_DEPTO_RESIDE)
+trabajo4$ESTU_MCPIO_RESIDE<-as.factor(trabajo4$ESTU_MCPIO_RESIDE)
+trabajo4$ESTU_AREARESIDE<-as.factor(trabajo4$ESTU_AREARESIDE)
+
+trabajo4$ESTU_PAGOMATRICULABECA<-as.factor(trabajo4$ESTU_PAGOMATRICULABECA)
+trabajo4$ESTU_PAGOMATRICULACREDITO<-as.factor(trabajo4$ESTU_PAGOMATRICULACREDITO)
+trabajo4$ESTU_PAGOMATRICULAPADRES<-as.factor(trabajo4$ESTU_PAGOMATRICULAPADRES)
+trabajo4$ESTU_PAGOMATRICULAPROPIO<-as.factor(trabajo4$ESTU_PAGOMATRICULAPROPIO)
+
+trabajo4$FAMI_CABEZAFAMILIA<-as.factor(trabajo4$FAMI_CABEZAFAMILIA)
+trabajo4$FAMI_ESTRATOVIVIENDA<-as.factor(trabajo4$FAMI_ESTRATOVIVIENDA)
+trabajo4$FAMI_NUMLIBROS<-as.factor(trabajo4$FAMI_NUMLIBROS)
+trabajo4$FAMI_NUMPERSONASACARGO<-as.factor(trabajo4$FAMI_NUMPERSONASACARGO)
+trabajo4$FAMI_PERSONASHOGAR<-as.factor(trabajo4$FAMI_PERSONASHOGAR)
+trabajo4$FAMI_TIENECOMPUTADOR<-as.factor(trabajo4$FAMI_TIENECOMPUTADOR)
+trabajo4$FAMI_TIENEINTERNET<-as.factor(trabajo4$FAMI_TIENEINTERNET)
+
+library(labelled)
+## Rotulado de variables 
+var_label(trabajo4$ESTU_GENERO)<- 'Genero'
+var_label(trabajo4$ESTU_ESTADOCIVIL)<- 'Estado civil'
+var_label(trabajo4$ESTU_TIENEETNIA)<- 'Etnia'
+var_label(trabajo4$ESTU_ETNIA)<- 'Etnia'
+var_label(trabajo4$ESTU_DEPTO_RESIDE)<- 'Departamento'
+var_label(trabajo4$edad.an)<- 'Edad en años'
+
+```
+
+
+```{r include=FALSE}
+
+## Paquetes necesarios
+
+library(tableone) 
+
+## Rotulado de variables 
+var_label(trabajo4$ESTU_GENERO)<- 'Genero'
+var_label(trabajo4$ESTU_ESTADOCIVIL)<- 'Estado civil'
+var_label(trabajo4$ESTU_TIENEETNIA)<- 'Etnia'
+var_label(trabajo4$ESTU_ETNIA)<- 'Etnia'
+var_label(trabajo4$ESTU_DEPTO_RESIDE)<- 'Departamento'
+var_label(trabajo4$edad.an)<- 'Edad en años'
+
+## Creación de variables 
+
+variables<-c("ESTU_ESTADOCIVIL", 
+"ESTU_TIENEETNIA", "ESTU_DEPTO_RESIDE")
+
+factores<-c("ESTU_ESTADOCIVIL", 
+"ESTU_TIENEETNIA","ESTU_DEPTO_RESIDE")
+
+tablauno_estudiantes<-CreateTableOne(vars=variables, data=trabajo4, strata="ESTU_GENERO",factorVars = factores, addOverall = TRUE)
+```
+
+```{r tabla1, echo=FALSE}
+print(tablauno_estudiantes, justify="left", test = FALSE, varLabels = TRUE)
+```
+
+Más del 70% de la población refirió estar soltero/a al momento de la presentación de la prueba. Solamente el 3.8% de los estudiantes pertenecían a un _grupo étnico_ particular. Llamativamente, mas del 70% de los participantes fueron procedentes de Bogotá. No se encontraron diferencias significativas entre géneros en ninguna de las variables analizadas. La presencia de discapacidad fue infrecuente, siendo la discapacidad motriz la reportada con mayor frecuencia en el `r round(length(which(trabajo4$ESTU_LIMITA_MOTRIZ=="x"))/nrow(trabajo4)*100,2)` % de los participantes en la prueba
+
+## Costos de matrícula y fuentes de financiamiento 
+
+Uno de los principales problemas en el ámbito educativo colombiano son los costos de las matrículas universitarias. Existen diferentes fuentes de financiación como son becas y créditos tanto públicos como privados pero son, en muchas ocasiones, los padres o los mismos estudiantes los que deben cubrir los costos educativos. La capacidad de pago puede ser diferente entre mas compromisos económicos se tengan por lo que la información del valor de la matrícula se presenta discriminado por el estado civil. El mayor porcentaje de estudiantes que pagaron matriculas muy altas eran solteros.\
+
+```{r costos, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+trabfil<-trabajo4 %>% filter(ESTU_VALORMATRICULAUNIVERSIDAD != ""
+                             & ESTU_ESTADOCIVIL != "" & ESTU_ESTADOCIVIL != 0)
+costos<-table(trabfil$ESTU_VALORMATRICULAUNIVERSIDAD, trabfil$ESTU_ESTADOCIVIL)
+rmdformats::pilltabs(costos, resid= FALSE, rows = FALSE, chisq = FALSE)
+```
+
+Una de las fuentes de financiamiento a la que aspiran un gran número de estudiantes son las becas. Estas becas pueden ser obtenidas de fuentes públicas o de instituciones privadas. Esta oportunidad es ofrecida a un porcentaje muy limitado de la población como se presenta en la tabla a continuación.\ 
+```{r becas, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+knitr::kable(
+  
+  trabajo4 %>% rename(Beca = ESTU_PAGOMATRICULABECA) %>% select(Beca) %>% 
+  summarise(
+    Becados = length(which(Beca=="Si")),
+    Porcen.Del.Total = round(length(which(Beca=="Si"))/n()*100,2)
+  ),
+  caption = 'Estudiantes becados', booktabs = TRUE
+)
+
+```
+
+# Composición de las familias 
+
+La encuesta recolecto información sobre la composición de las familias de los estudiantes que tomaron la prueba. La mayoría de los participantes pertenecieron al estrato 2 o 3 como se presenta en la figura 1 a continuación.\
+
+```{r base_estrato, echo=FALSE, message=FALSE, warning=FALSE, fig.align= "center"}
+library(RColorBrewer)
+paleta<-RColorBrewer::brewer.pal(6, "Greens")
+barplot(table(trabajo4 %>% filter(FAMI_ESTRATOVIVIENDA != "") %>% select(FAMI_ESTRATOVIVIENDA)), las=2, cex.names = 0.8, col=paleta,
+        main="Distribución por estratos", ylim=c(0,40000))
+```
+
+
+
+Otra característica de interés y que refleja el poder adquisitivo de los hogares es el número de libros existente en cada uno. Considerando que muchos hogares tienen restricciones respecto al presupuesto que pueden destinar para la compra de este tipo de bienes, es de utilidad presentar la información discriminada por estratos. La gráfica a continuación resume la información.\
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align= "center"}
+library(ggthemes)
+trabajo4 %>% filter(FAMI_NUMLIBROS != "") %>% 
+  mutate(FAMI_NUMLIBROS = fct_infreq(FAMI_NUMLIBROS)) %>% 
+  ggplot(aes(x=FAMI_NUMLIBROS, fill= FAMI_ESTRATOVIVIENDA)) +
+  geom_bar() + coord_flip() + labs(title="Número de libros en la vivienda",
+                                   subtitle = "Discriminado por estratos", 
+                                   x= "", 
+                                   y= "Número de hogares")+theme_economist()+
+                                   guides(fill=guide_legend(title=NULL))
+```
+
+## Resultados de las pruebas 
+
+El resultado de la prueba __SABER__ se presenta como un puntaje global. El promedio nacional fue de `r round(mean(trabajo4$PUNT_GLOBAL),2)` con una desviación estándar de `r round(sd(trabajo4$PUNT_GLOBAL),3)` con un rango entre ( `r range(trabajo4$PUNT_GLOBAL)`). \
+
+
+
+En años anteriores se ha planteado que existen diferencias en el promedio entre los puntajes obtenidos entre hombres y mujeres. Como esta encuesta fue recolectada de manera probabilística y es representativa de la población, se considera apropiado realizar comparaciones entre los grupos. Inicialmente, se presenta la distribución de los puntajes para cada género.\
+
+```{r}
+mujeres<-trabajo4 %>% filter(ESTU_GENERO == "F")
+hombres<-trabajo4 %>% filter(ESTU_GENERO == "M")
+```
+
+```{r histogramas, echo=FALSE, message=FALSE, warning=FALSE, fig.align= "center"}
+azult<-rgb(0,0,155, alpha = 30, maxColorValue = 155)
+rojot<-rgb(155,0,0, alpha = 30, maxColorValue = 155)
+par(bg= rgb(0,118,0, alpha= 40, maxColorValue = 118))
+hist(mujeres$PUNT_GLOBAL, col = azult,
+     freq = TRUE, breaks=c(80), main = "Histograma de puntajes por sexo",
+     xlab="Puntaje obtenido", ylab = "Frecuencia")
+hist(hombres$PUNT_GLOBAL, col = rojot,
+     freq=TRUE, breaks = c(80), add = TRUE)
+text(30,3000, c("Mujeres"), col=c(rgb(0,0,155, alpha = 80, maxColorValue = 155)), cex = 1.2)
+text(30,4000, c("Hombres"), col=c(rgb(155,0,0, alpha = 80, maxColorValue = 155)), cex = 1.2)
+grid(col = "lightgray")
+
+```
+
+La distribuciones del puntaje global son diferentes por género, la de los hombres platicúrtica y la de las mujeres leptocúrtica. El promedio del puntaje para los hombres fue de `r round(mean(hombres$PUNT_GLOBAL))` con desviación estandar de `r round(sd(hombres$PUNT_GLOBAL))`y para las mujeres de `r round(mean(mujeres$PUNT_GLOBAL))` con desviación estándar de `r round(sd(mujeres$PUNT_GLOBAL))`. Se plantea entonces una prueba de hipótesis para el promedio de puntaje global entre hombres y mujeres, teniendo como hipótesis nula que no existe una diferencia significativa entre los puntajes. Se realiza inicialmente una prueba para definir si las varianzas entre las dos poblaciones son iguales.\ 
+
+```{r varianzas, echo=FALSE, message=FALSE, warning=FALSE}
+var.test(PUNT_GLOBAL~ESTU_GENERO, data= trabajo4, alternative = c("two.sided") )
+```
+
+
+
+Se rechaza la hipótesis nula de que las varianzas son iguales. Se procede entonces a realizar la prueba T para dos grupos con varianzas diferentes. 
+
+```{r pruebat, echo=FALSE, message=FALSE, warning=FALSE}
+prueba<-t.test(PUNT_GLOBAL~ESTU_GENERO, data= trabajo4, paired= FALSE, var.equal = FALSE,
+       alternative = "two.sided", conf.level =0.95)
+prueba
+```
+
+Se encuentra entonces un valor p cercano a `r prueba$p.value`, por lo que se rechaza la hipótesis nula de que los puntajes son iguales entre hombres y mujeres, a favor de que son diferentes, con una significancia del 5%. 
+
+## Conclusiones 
+El análisis de los resultados de la prueba __SABER__ es una métrica de la educación en Colombia, que refleja tanto la calidad educativa como aspectos de desarrollo social y económico. Nuestro análisis presenta de forma resumida aspectos generales sobre los estudiantes, su entorno famliar, u familia, los costos de las matriculas y las fuentes de financiamiento y los resultados de la prueba.\ 
+
+El hallazgo de que existen diferencias entre los valores obtenidos entre hombres y mujeres debe evaluarse con precaución, ya que la diferencia absoluta entre los promedios es de tan solo siete puntos. No obstante, es un aspecto para planear futuras encuestas y definir si cuando se controla por otras variables se puede mantener esta misma diferencia^[Ejercicio académico para la maestría en bioestadística de la PUJ. Los análisis no corresponden a hechos reales]. 
+
