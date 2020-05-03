@@ -1,0 +1,442 @@
+---
+title: "Taller1"
+author: "Leonardo Enciso"
+date: "28/4/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Datos , message=FALSE, warning=FALSE, include=FALSE}
+# Lectura de datos 
+library(readxl)
+osteo<- read_excel("C:/Users/leonardo/Dropbox/MAESTRIA PROVISIONAL/TECNICAS 2/Taller 1/osteoporosis400.xlsx")
+library(rmarkdown)
+
+```
+
+El objetivo del estudio era el de evaluar si existía asociación entre la densidad mineral ósea (dmo) y las demás covariables.
+
+## Pregunta 1: IMC
+
+Los investigadores deseaban evaluar primero si la densidad mineral ósea estaba asociada con el índice de masa corporal. 
+
+Se definen como categorías del índice de masa corporal 
+
++ Normal: 18 a 24.9 
++ Sobrepeso: 25 a 29.9 
++ Obeso: 30 o mayor 
+
+Se categoriza la variable en los tres grupos
+
+```{r imccat, echo=FALSE, message=FALSE, warning=FALSE}
+osteo$imccat<-cut(osteo$imc, breaks = c(18,24.9,29.9,48.39),
+                  labels = c("Normal", "Sobrepeso", "Obesidad"))
+table(osteo$imccat)
+
+```
+
+Se construyen los gráficos de caja de la DMO para las tres categorías
+\
+```{r imc_cat2, echo=FALSE, message=FALSE, warning=FALSE, paged.print=F}
+
+tapply(osteo$dmo, osteo$imccat, summary)
+boxplot(tapply(osteo$dmo, osteo$imccat, summary), 
+        main="DMO por grupo de IMC")
+
+```
+\ 
+
+La revisión del gráfico sugiere que el promedio de la DMO es similar entre los grupos. 
+\ 
+
+Se identifican algunos valores atípicos. Para realizar la comparación de los promedios se utiliza un ANOVA. Se inicia con la validación de los supuestos de normalidad y homocesdasticidad.
+
+\ 
+
+```{r grup_imc, include=FALSE}
+library(tidyverse)
+normal<-osteo %>% filter(imc<25)
+sobrepeso<-osteo %>% filter(imc>=25 & imc<30)
+obesidad<-osteo %>% filter(imc>=30)
+```
+
+```{r normal_imc*dmo, echo=FALSE, paged.print=TRUE}
+
+shapiro.test(normal$dmo)
+shapiro.test(sobrepeso$dmo)
+shapiro.test(obesidad$dmo)
+```
+En el grupo de sobrepeso se rechaza la hipótesis nula de normalidad. Se continua con la valoración de la homocesdasticidad 
+\
+
+```{r hom_dmo*imc, echo=FALSE, paged.print=TRUE}
+var.test(normal$dmo, sobrepeso$dmo)
+var.test(normal$dmo, obesidad$dmo)
+var.test(sobrepeso$dmo, obesidad$dmo)
+```
+En ninguna comparación se rechaza la hipótesis nula de homogeneidad de las varianzas. Se realiza entonces la comparación con el ANOVA 
+```{r}
+modelo<-lm(osteo$dmo~osteo$imccat, data=osteo)
+anova(modelo)
+
+```
+El valor F obtenido es de 2.3186 y no se rechaza la hipótesis nula, lo cual indica que no hay diferencia en el promedio entre los grupos. 
+
+## Pregunta 2: Edad
+
+Los investigadores también deseaban evaluar si la densidad mineral ósea estaba asociada con la edad. 
+
+Se categoriza la edad en tres grupos (<50, de 50-59 y >59 años)
+```{r catedad, echo=FALSE}
+osteo$catedad<-cut(osteo$edad, breaks = c(44,50,59,69), 
+                   labels = c("<50","50 a 59",">59"))
+table(osteo$catedad)
+osteo %>% group_by(catedad) %>% summarise(mean(dmo))
+```
+\ 
+
+Se construye un gráfico de caja con las categorías construídas para la variable DMO
+```{r}
+boxplot(tapply(osteo$dmo, osteo$catedad, summary), main="DMO por grupo de edad")
+
+```
+\
+
+El gráfico de caja sugiere que hay diferencias entre el promedio de densidad mineral ósea entre los grupos. Se realiza entonces una comparación mediante un ANOVA. Se inicia con la validación de los supuestos de normalidad y homocedasticidad. 
+
+\ 
+
+```{r}
+library(tidyverse)
+Menor50<-osteo %>% filter(edad<50)
+De50a59<-osteo %>% filter(edad>=50 & edad<59)
+Mayor59<-osteo %>% filter(edad>=59)
+```
+
++ Validación del supuesto de normalidad de la variable DMO en cada grupo de edad 
+
+```{r}
+shapiro.test(Menor50$dmo)
+shapiro.test(De50a59$dmo)
+shapiro.test(Mayor59$dmo)
+```
+\ 
+
+La prueba de normalidad rechaza la hipótesis nula de normalidad en los tres grupos. Se valora mediante un histograma la distribución. 
+```{r}
+azult<-rgb(0,0,155, alpha = 30, maxColorValue = 155)
+rojot<-rgb(155,0,0, alpha = 30, maxColorValue = 155)
+verdet<-rgb(0,155,0, alpha = 30, maxColorValue = 155)
+
+par(mfrow=c(1,3))
+hist(Menor50$dmo, col=azult, main="DMO en < 50", xlab="DMO", ylab="Frecuencia")
+hist(De50a59$dmo, col=rojot, main="DMO en 50 a 59",xlab="DMO", ylab="Frecuencia")
+hist(Mayor59$dmo, col=verdet, main="DMO en > 59",xlab="DMO", ylab="Frecuencia")
+
+
+```
+\
+
++ Validación del supuesto de homocedasticidad 
+```{r}
+var.test(Menor50$dmo, De50a59$dmo)
+var.test(Menor50$dmo, Mayor59$dmo)
+var.test(De50a59$dmo, Mayor59$dmo)
+
+```
+\ 
+
+No se rechaza la hipótesis nula de homogeneidad de las varianzas. Se procede entonces con la construcción del ANOVA 
+
+\ 
+
+```{r}
+modelo2<-lm(osteo$dmo~osteo$catedad, data=osteo)
+anova(modelo2)
+```
+\ 
+
+El valor del estadístico F es de 29.904 que corresponde a un valor menor de 0.00001. Se rechaza la hipótesis nula de que los promedios son iguales a favor de la hipótesis alternativa de que al menos uno es diferente. Para identificar entre grupos se encuentran las diferencias, se realizar una prueba de Tukey. 
+
+```{r echo=TRUE}
+modelo_tukey<-aov(osteo$dmo~osteo$catedad, data = osteo)
+TukeyHSD(modelo_tukey)
+```
+\
+
+Se encuentra que el promedio es diferente entre todos los grupos comparados con valores significativos menores a 0,001 en todos los casos. 
+
+## Pregunta 3: Correlación 
+
+¿Existe correlación entre la variable desenlace (dmo) y las variables independientes?
+\ 
+Se construye una matriz de correlación entre las variables cuantitativas. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+library(ggcorrplot)
+library(corrplot)
+library(tidyverse)
+library(dplyr)
+
+## Se construye un vector con las variables cuantitativas 
+
+
+osteoCuan<- osteo %>% select(dmo, edad, peso, talla, imc, menarquia, 
+                             ciclomenstrual, numerohijos, abortos)
+# Matriz de correlación
+corCuant<-cor(osteoCuan)
+paged_table(as.data.frame(corCuant))
+```
+\
+Se construye una matriz con los valores p de las correlaciones 
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Valores de p de las correlaciones 
+p.mat<-cor_pmat(corCuant)
+paged_table(as.data.frame(p.mat))
+```
+Se presenta gráficamente la información de la matríz de correlación 
+```{r echo=FALSE, fig.align="center", message=FALSE, warning=FALSE}
+library(ggcorrplot)
+ggcorrplot(corCuant, type = "lower")
+
+```
+\ 
+
+Se encuentra que la variable DMO tiene correlación negativa de -0.37 con la edad y en menor grado (-0.13) con la edad de la menarquia. La correlación entre la DMO y la edad es significativa estadísticamente con un valor p de 0.02. 
+
+# Punto 4: Modelo de asociación 
+
+Para construir el modelo se inicia con un modelo lineal simple entre la variable dmo y la variable edad que fue la que tuvo la correlación mas alta. Se declaran además como factores las variables categóricas antes de su inclusión en el modelo. 
+
+```{r include=FALSE}
+osteo$menopausia<-as.factor(osteo$menopausia)
+osteo$antmaternos<-as.factor(osteo$antmaternos)
+osteo$nivel_ed<-as.factor(osteo$nivel_ed)
+osteo$paridad<-as.factor(osteo$paridad)
+
+```
+Se seleccionan los casos con datos completos
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(pander)
+osteoCom<-na.omit(osteo)
+modelo_inicial<-lm(osteoCom$dmo~osteoCom$edad, data=osteo)
+pander(summary(modelo_inicial))
+pander(anova(modelo_inicial))
+anova(modelo_inicial)
+
+```
+\
+En el modelo linear entre la DMO y la edad, se encuentra asociación. El modelo se interpreta como que, por cada año de incremento de la edad, se reduce la densidad mineral ósea en 0.9576 unidades. De los casos incluidos, fueron seleccionados para el modelo 330 
+\
+Se construye un modelo completo con todas las variables para evaluar su comportamiento. 
+\
+```{r modelo full }
+library(pander)
+pander(anova(lm(osteoCom$dmo~osteoCom$edad+osteoCom$peso+osteoCom$talla+
+           osteoCom$menarquia+osteoCom$menopausia+osteoCom$antmaternos+
+           osteoCom$activ_laboral+osteoCom$ciclomenstrual+osteoCom$nivel_ed+
+           osteoCom$paridad+osteoCom$numerohijos+osteoCom$abortos+
+           osteoCom$imccat)))
+
+```
+\ 
+
+La variables edad y peso son estadísticamente significativas en este modelo. La variable menarquia estuvo cerca al límite de la significancia. Las demás variables no reportan valores de p significativos.
+\
+Se decide construir un modelo ordenado, iniciando con las variables que tuvieron la correlación más alta. El modelo inicial incluyó solamente la edad como variable predictora. 
+\
+Se construyen las correlaciones parciales, iniciando por la inclusión de la variable menarquia que fue la siguiente con mayor importancia en la matriz de correlación. 
+
+```{r message=FALSE, warning=FALSE}
+library(ppcor)
+# Primero la que se quiere evaluar, luego la independiente, luego la incluida
+pander(pcor.test(osteoCom$menarquia, osteoCom$dmo,osteoCom[,c("edad")] ))
+pander(pcor.test(osteoCom$peso, osteoCom$dmo,osteoCom[,c("edad")] ))
+pander(pcor.test(osteoCom$imccat, osteoCom$dmo,osteoCom[,c("edad")] ))
+pander(pcor.test(osteoCom$menopausia, osteoCom$dmo,osteoCom[,c("edad")] ))
+pander(pcor.test(osteoCom$nivel_ed, osteoCom$dmo,osteoCom[,c("edad")] ))
+pander(pcor.test(osteoCom$paridad, osteoCom$dmo,osteoCom[,c("edad")] ))
+pander(pcor.test(osteoCom$antmaternos, osteoCom$dmo,osteoCom[,c("edad")] ))
+pander(pcor.test(osteoCom$numerohijos, osteoCom$dmo,osteoCom[,c("edad")] ))
+```
+La segunda variable a incluir en el modelo es el peso, el cual tuvo el valor de p mas bajo. 
+```{r}
+modelo_tercero<-lm(osteoCom$dmo~osteoCom$edad+osteoCom$peso, data=osteoCom)
+pander(summary(modelo_tercero))
+pander(anova(modelo_tercero))
+
+```
+
+\
+
+La inclusión de la nueva variable mejora el ajuste del modelo, con aumento del valor del $R^2$. 
+\
+
+Se construyen nuevamente las correlaciones parciales. La primera variable que se evalua es el IMC categorizado, seguido de la menarquia por ser significativas en la correlación parcial anterior. 
+
+```{r message=FALSE, warning=FALSE}
+pander(pcor.test(osteoCom$imccat, osteoCom$dmo,osteoCom[,c("edad", "peso")] ))
+pander(pcor.test(osteoCom$menarquia, osteoCom$dmo,osteoCom[,c("edad", "peso")] ))
+pander(pcor.test(osteoCom$numerohijos, osteoCom$dmo,osteoCom[,c("edad", "peso")] ))
+pander(pcor.test(osteoCom$paridad, osteoCom$dmo,osteoCom[,c("edad", "peso")] ))
+pander(pcor.test(osteoCom$nivel_ed, osteoCom$dmo,osteoCom[,c("edad", "peso")] ))
+pander(pcor.test(osteoCom$antmaternos, osteoCom$dmo,osteoCom[,c("edad", "peso")] ))
+pander(pcor.test(osteoCom$menopausia, osteoCom$dmo,osteoCom[,c("edad", "peso")] ))
+```
+\
+En la correlación parcial, el IMC categorizado no fue estadísticamente significativo. La menarquia estuvo en el límite de la significancia y se decide evaluar el efecto de su inclusión en el modelo. 
+
+```{r}
+modelo_cuarto<-lm(osteoCom$dmo~osteoCom$edad+osteoCom$peso+osteoCom$menarquia, data=osteoCom)
+pander(summary(modelo_cuarto))
+anova(modelo_cuarto)
+pander(anova(modelo_cuarto))
+```
+\ 
+
+Con las tres variables incluidas el $R^2$ aumenta a 15.82. Se considera entonces que el modelo final es: 
+
+\ 
+
+$dmo=\beta_0+\beta_1 edad+\beta_2peso+\beta_3 menarquia$ 
+
+\ 
+
+La tabla ANOVA final que se construye con los valores correctos es: 
+
+             Df Sum Sq Mean Sq F value    Pr(>F)   
+       edad   1  13026 13026.0  47.377 2.986e-11 *** 
+       peso   1   3326  3325.7  12.521 0.0004607 *** 
+   `menarquia  1    766   766.4  2.9022 0.0894130 `
+
+
+\
+
+## Diagnóstico del modelo 
+
+Se realiza primero la identificación del mejor modelo para proceder a su evaluación. En el modelo propuesto fueron incluidas tres variables que fueron edad, peso y menarquia. Se construyen entonces dos modelos: uno incluyendo las tres variables y otro excluyendo la variable menarquia que no tuvo un valor p significativo en la correlación parcial cuando se encontraban incluidas las otras dos variables. 
+
+```{r}
+# El modelo con las tres variables se llama modelocuarto 
+modelo_quinto<-lm(osteoCom$dmo~osteoCom$edad+osteoCom$peso)
+anova(modelo_quinto)
+anova(modelo_cuarto)
+anova(modelo_cuarto, modelo_quinto)
+```
+\ 
+No se encuentran diferencias significativas entre los dos modelos, incluyendo o no a la menarquia por lo que se excluye. El modelo final sobre el cual se hace el diagnóstico incluye únicamente la variable edad y la variable peso.
+\ 
+Para el diagnóstico del modelo se realizan los siguientes análisis: 
++ Presencia de valores atípicos 
++ Validación de los supuestos 
++ Evaluación de colinealidad 
+
+## Presencia de valores atípicos
+
+Se inicia realizado el análisis de las residuales del modelo. Se utiliza inicialmente la valoración gráfica. La gráfica de los valores residuales crudas muestra una distribución simétrica alrededor del cero. El gráfico QQ normal de las residuales estandarizadas parece identificar como valores atípicos a tres valores: 53, 272 y 176. La evaluación gráfica de la distancia de Cook no parece identificar valores atípicos.  
+```{r}
+plot(modelo_quinto)
+```
+\
+Se realizan pruebas para identificar valores atipicos asi
+```{r}
+studentizadas<-rstudent(modelo_quinto)
+studentizadas[which(abs(studentizadas)>2)]
+```
+\
+Se identifican varios valores atípicos adicionalmente a lo que se había identificado gráficamente. Ahora se busca identificar la presencia de observaciones influyentes. 
+```{r}
+summary(influence.measures(modelo_quinto))
+```
+\
+Se identifican múltiples observaciones potencialmente influyentes. 
+```{r}
+library(car)
+outlierTest(modelo_quinto) 
+```
+\ 
+La prueba de bonferroni identifica como valor atípico el valor 53. 
+
+## Validación de supuestos del modelo 
+
+_Homocedasticidad_
+```{r}
+library(lmtest)
+bptest(modelo_quinto)
+```
+\
+No se rechaza la hipotésis nula de que los datos son homocedasticos. 
+\ 
+_Independencia_
+```{r}
+dwtest(modelo_quinto)
+```
+\ 
+No se rechaza la hipótesis nula de que los errores no están correlacionados por lo que se valida la independencia 
+\ 
+_Linealidad_
+```{r}
+crPlots(modelo_quinto)
+```
+\ 
+La gráfica de edad muestra linealidad pero se aprecian desviaciones en la variable peso. 
+\ 
+_Pruebas globales_ 
+```{r}
+library(gvlma)
+gvmodel <- gvlma(modelo_quinto) 
+summary(modelo_quinto)
+```
+
+```{r}
+library(olsrr)
+ols_plot_resid_stud_fit(modelo_quinto)
+```
+
+```{r}
+ols_plot_cooksd_bar(modelo_quinto)
+```
+\ 
+El gráfico define una distancia de Cook de 0.012 como el limite para considerar un valor como atípico. Aunque varias observaciones están por encima del umbral, solamente una parece ser un valor influyente. 
+
+_Colinearidad_
+```{r}
+summary(influence.measures(modelo_quinto))
+```
+\ 
+Se identifican varias observaciones potencialmente influyentes. 
+```{r}
+ols_vif_tol(modelo_quinto)
+```
+\ 
+El factor de inflación de la varianza es menor a 10. Se considera por este criterio que no hay multicolinealidad 
+\ 
+```{r}
+ols_coll_diag(modelo_quinto)
+```
+\ 
+Ninguno de los índices de condición es mayor a 30 por lo que se considera que no hay problemas de colinealidad. 
+
+## Interpretación del diagnóstico 
+El modelo construido como un modelo de asociación tiene pocos valores atípicos y algunas obsrvaciones influyentes. Fue posible validar los supuestos del modelo y no se detecta colinealidad. La relación entre la variable edad y la DMO tiene un aspecto lineal pero la variable peso se desvia de este supuesto. Aunque pareciera razonable utilizar un modelo lineal, es posible que otro tipo de modelamiento pueda explicar mejor la relación entre las variables. 
+
+```{r}
+# Gráficos en ggplot 
+
+ggplot(data=osteoCom, aes(x=catedad))+geom_bar()
+
+ggplot(data = osteoCom, aes(x=dmo))+geom_histogram()
+
+ggplot(data= osteoCom, aes(x=dmo, y=peso, color=catedad)) +geom_point()
+
+ggplot(data=osteoCom, aes(x=catedad, y=dmo, col=catedad))+geom_boxplot()+
+  scale_y_continuous(breaks=seq(10,300,by=10))+
+  labs(title="Gráfico de caja DMO por grupo de edad",
+       x="Grupo de edad",
+       y="DMO en unidades enciso")
+```
