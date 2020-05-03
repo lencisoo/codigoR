@@ -1,0 +1,111 @@
+## Taller 1 de estadística no paramétrica 
+## Leonardo Enciso PUJ 
+
+## Importación de los datos 
+library(readxl)
+BD_inclusion <- read_excel("C:/Users/leonardo/Dropbox/MAESTRIA PROVISIONAL/ESTADISTICA NO PARAMETRICA/Taller 1/BD_inclusion.xlsx")
+View(BD_inclusion)
+
+##################################################################################
+###Pregunta 1: ¿La muestra de puntaje asignado a la discapacidad mental provienen 
+# de una población con distribución normal?
+
+##### Representación gráfica
+par(mfcol=c(2,2))
+# Histograma
+hist(BD_inclusion$mental, main="Discapacidad mental", xlab="Puntaje",
+     ylab="Frecuencia")
+# Gráfico de caja 
+boxplot(BD_inclusion$mental, main="Discapacidad mental", ylab="Puntaje")
+# Estandarización del peso 
+z.mental<-(BD_inclusion$mental-mean(BD_inclusion$mental))/sd(BD_inclusion$mental)
+# Gráfico QQ
+qqnorm(z.mental, main="Gráfico QQ: Datos normalizados")
+abline(0,1, col="Red")
+# Gráfica de la ecdf 
+plot(ecdf(BD_inclusion$mental), col ="#db6a28",main="Distribución empírica",
+     xlab="Puntajes")
+grid(col="Darkgray")
+
+### Declaración de funciones para pruebas de normalidad 
+library(nortest)
+## Usando la libreria nortest 
+usa_nortest<-function(x){
+  anderson<-ad.test(x)
+  cramer<-cvm.test(x)
+  lillies<-lillie.test(x)
+  shapiro.francia<-sf.test(x)
+  ## Salida a pantalla 
+  print(anderson)
+  print(cramer)
+  print(lillies)
+  print(shapiro.francia)
+}
+usa_nortest(BD_inclusion$mental)
+
+###############################################################################
+## Pregunta 2: Es diferente sensorial y cognitiva 
+SIGN.test(BD_inclusion$sensorial, BD_inclusion$cognitiva,md=0, alternative ="two.sided",
+          conf.level = 0.99)
+
+
+###############################################################################
+## Pregunta 3: En general, ¿el puntaje asignado con relación a la discapacidad cognitiva, 
+# tiene una mediana mayor a 5 puntos?
+
+## Se utiliza la prueba del signo
+## Se utiliza tanto la aproximación exacta como la asintotica 
+library(exactRankTests)
+table(BD_inclusion$cognitiva >5)
+library(BSDA)
+SIGN.test(BD_inclusion$cognitiva, md=5, alternative = "greater")
+binom.test(22,35,0.5, alternative = c("greater"))
+View(BD_inclusion)
+table(BD_inclusion$cognitiva)
+
+################################################################################
+## Pregunta 4. ¿Es menor el grado de dificultad en discapacidad física que en 
+#discapacidad sensorial?
+wilcox.exact(BD_inclusion$fisica,BD_inclusion$sensorial,paired = T,exact = T,
+             conf.int = 0.95, mu=0, alternative = "less")
+wilcox.exact(BD_inclusion$fisica,BD_inclusion$sensorial,paired = T,exact = F,
+             conf.int = 0.95, mu=0, alternative = "less")
+
+################################################################################
+## Pregunta 5. 
+##¿El grado de dificultad en discapacidad sensorial, es menor en preescolar 
+##que en secundaria?
+wilcox.exact(prescolar$fisica,secundaria$fisica,paired = F,exact = T,conf.int = 0.95, 
+             alternative = "less")
+
+################################################################################
+## Pregunta 6
+library(tidyverse)
+prescolar<-BD_inclusion %>% filter (nivel == "Prescolar")
+primaria<-BD_inclusion %>% filter (nivel == "Primaria")
+secundaria<-BD_inclusion %>% filter (nivel == "Secundaria")
+kruskal.test(list(prescolar$sensorial, primaria$sensorial, secundaria$sensorial))
+library(PMCMR)
+posthoc.kruskal.dunn.test(list(prescolar$sensorial, primaria$sensorial, secundaria$sensorial),
+                          p.adjust.method = "bonferroni")
+###############################################################################
+## Pregunta 7 
+mat_dis<-as.matrix(BD_inclusion[,3:6])
+mat_dis
+friedman.test(mat_dis)
+posthoc.friedman.conover.test(mat_dis, p.adjust.method = "bonferroni")
+
+###############################################################################
+## Pregunta 8 
+# Creación de los vectores 
+fisica_v<-ifelse(BD_inclusion$fisica>5,1,0)
+sensorial_v<-ifelse(BD_inclusion$sensorial>5,1,0)
+cognitiva_v<-ifelse(BD_inclusion$cognitiva>5,1,0)
+mental_v<-ifelse(BD_inclusion$mental>5,1,0)
+id_v<-c(1:35)
+## Creación del data frame 
+qprueba<-data.frame(id_v,fisica_v,sensorial_v,cognitiva_v,mental_v)
+View(qprueba)
+## Aplicación de la prueba 
+cochran.qtest(fisica_v~sensorial_v+cognitiva_v+mental_v|id_v)
+write.csv(qprueba,"qprueba2.csv")
